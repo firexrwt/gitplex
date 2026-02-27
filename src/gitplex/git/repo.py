@@ -224,6 +224,17 @@ class GitRepo:
         r = self._run("fetch", "--all", "--prune", check=False)
         return r.returncode == 0, (r.stdout + r.stderr).strip()
 
+    def force_push(self) -> tuple[bool, str]:
+        """Push with --force-with-lease (safe force: fails if remote was updated by someone else)."""
+        if self.has_upstream():
+            r = self._run("push", "--force-with-lease", check=False)
+        else:
+            branch = self.get_branch()
+            remotes = self.list_remotes()
+            remote_name = remotes[0][0] if remotes else "origin"
+            r = self._run("push", "--force-with-lease", "-u", remote_name, branch, check=False)
+        return r.returncode == 0, (r.stdout + r.stderr).strip()
+
     # ── Init ─────────────────────────────────────────────────────────────────
 
     @classmethod
@@ -288,6 +299,29 @@ class GitRepo:
                     subject=parts[4], refs=parts[5],
                 ))
         return commits
+
+    # ── History operations ───────────────────────────────────────────────────
+
+    def get_head_sha(self) -> str:
+        r = self._run("rev-parse", "HEAD", check=False)
+        return r.stdout.strip()
+
+    def cherry_pick(self, sha: str) -> tuple[bool, str]:
+        r = self._run("cherry-pick", sha, check=False)
+        return r.returncode == 0, (r.stdout + r.stderr).strip()
+
+    def revert(self, sha: str) -> tuple[bool, str]:
+        r = self._run("revert", "--no-edit", sha, check=False)
+        return r.returncode == 0, (r.stdout + r.stderr).strip()
+
+    def reset(self, sha: str, mode: str = "mixed") -> tuple[bool, str]:
+        """mode: soft | mixed | hard"""
+        r = self._run("reset", f"--{mode}", sha, check=False)
+        return r.returncode == 0, (r.stdout + r.stderr).strip()
+
+    def amend(self, message: str) -> tuple[bool, str]:
+        r = self._run("commit", "--amend", "-m", message, check=False)
+        return r.returncode == 0, (r.stdout + r.stderr).strip()
 
     # ── Stash ────────────────────────────────────────────────────────────────
 

@@ -8,7 +8,7 @@ from typing import Optional
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Header, Footer, TabbedContent, TabPane, Label
+from textual.widgets import Header, Footer, TabbedContent, TabPane, Label, DataTable
 from textual import on, work
 
 from .config import Config
@@ -20,7 +20,7 @@ from .widgets.diff_view import DiffView
 from .widgets.graph_view import GraphView
 from .widgets.modals import (
     CommitModal, AddRepoModal, NewRepoModal, CloneModal, RemoteModal,
-    BulkProgressModal, BranchModal,
+    BulkProgressModal, BranchModal, CommitActionsModal, ConfirmModal,
 )
 
 
@@ -37,6 +37,7 @@ class GitUIApp(App):
         Binding("c",     "commit",       "Commit",      priority=True),
         Binding("p",     "pull",         "Pull",        priority=True),
         Binding("P",     "push",         "Push",        priority=True),
+        Binding("F",     "force_push",   "Force Push",  priority=True),
         Binding("f",     "fetch",        "Fetch",       priority=True),
         Binding("b",     "branch",       "Branch",      priority=True),
         Binding("S",     "stash",        "Stash",       priority=True),
@@ -65,6 +66,7 @@ class GitUIApp(App):
         Binding("X", "remove_repo", "Remove repo", priority=True),
         Binding("r", "refresh",     "Refresh",     priority=True),
         Binding("q", "quit",        "Quit",        priority=True),
+        Binding("enter", "commit_action", "Actions", priority=True, show=False),
     ]
 
     def __init__(self, scan_dir: Optional[Path] = None):
@@ -177,6 +179,65 @@ class GitUIApp(App):
             graph, commits,
         )
 
+    # ── Commit actions ────────────────────────────────────────────────────────
+
+    def action_commit_action(self) -> None:
+        """Open commit actions modal for the highlighted row in the Log table."""
+        focused = self.focused
+        if not isinstance(focused, DataTable) or focused.id != "commit-table":
+            return
+        if not self._current_repo:
+            return
+        row_idx = focused.cursor_row
+        if row_idx is None:
+            return
+        gv = self.query_one("#graph-view", GraphView)
+        commits = list(gv._commits.values())
+        if row_idx >= len(commits):
+            return
+        commit = commits[row_idx]
+        head_sha = self._current_repo.get_head_sha()
+        is_head = commit.sha == head_sha
+        repo = self._current_repo
+
+        def _execute(result) -> None:
+            action = result.action
+            if action == "cherry-pick":
+                ok, out = repo.cherry_pick(result.sha)
+            elif action == "revert":
+                ok, out = repo.revert(result.sha)
+            elif action.startswith("reset-"):
+                ok, out = repo.reset(result.sha, mode=action[6:])
+            elif action == "amend":
+                ok, out = repo.amend(result.message)
+            else:
+                return
+            label = action.replace("-", " ").title()
+            if ok:
+                self.notify(out.splitlines()[0] if out else "Done",
+                            title=f"{label} ✓")
+            else:
+                self.notify(out.splitlines()[0] if out else "Failed",
+                            title=f"{label} ✗", severity="error")
+            self._refresh_current_repo()
+            self._load_graph()
+
+        def _on_action(result) -> None:
+            if result is None:
+                return
+            if result.action == "reset-hard":
+                self.push_screen(ConfirmModal(
+                    "Hard Reset — irreversible",
+                    f"Reset HEAD to [cyan]{result.sha[:7]}[/cyan] and discard\n"
+                    f"all working directory changes?",
+                    confirm_label="Reset Hard",
+                    danger=True,
+                ), callback=lambda confirmed: confirmed and _execute(result))
+            else:
+                _execute(result)
+
+        self.push_screen(CommitActionsModal(commit, is_head), callback=_on_action)
+
     # ── File selection ────────────────────────────────────────────────────────
 
     @on(FileList.FileSelected)
@@ -235,7 +296,22 @@ class GitUIApp(App):
         self._refresh_current_repo()
 
     def action_discard(self):
-        self.query_one("#file-list", FileList).action_discard()
+        file_list = self.query_one("#file-list", FileList)
+        fs = file_list.get_discard_candidate()
+        if fs is None:
+            return
+
+        def _on_confirm(confirmed: bool) -> None:
+            if confirmed:
+                file_list.action_discard()
+                self._refresh_current_repo()
+
+        self.push_screen(ConfirmModal(
+            "Discard changes",
+            f"Discard all unstaged changes in [cyan]{fs.path}[/cyan]?\nThis cannot be undone.",
+            confirm_label="Discard",
+            danger=True,
+        ), callback=_on_confirm)
 
     def action_toggle_stage(self):
         self.query_one("#file-list", FileList).action_toggle_stage()
@@ -333,6 +409,33 @@ class GitUIApp(App):
             self.notify("No repo selected", severity="warning"); return
         self._do_fetch(self._current_repo)
 
+    def action_force_push(self):
+        if not self._current_repo:
+            self.notify("No repo selected", severity="warning"); return
+        repo = self._current_repo
+
+        def _on_confirm(confirmed: bool) -> None:
+            if confirmed:
+                self._do_force_push(repo)
+
+        self.push_screen(ConfirmModal(
+            "Force Push",
+            f"Force-push [cyan]{repo.path.name}[/cyan] with --force-with-lease?\n"
+            f"This overwrites the remote branch.",
+            confirm_label="Force Push",
+            danger=True,
+        ), callback=_on_confirm)
+
+    @work(thread=True)
+    def _do_force_push(self, repo: GitRepo):
+        ok, out = repo.force_push()
+        self.call_from_thread(
+            self.notify, out.splitlines()[0] if out else ("done" if ok else "failed"),
+            title=f"Force Push {'✓' if ok else '✗'} {repo.path.name}",
+            severity="information" if ok else "error",
+        )
+        self.call_from_thread(self._refresh_current_repo)
+
     # ── Bulk ops ──────────────────────────────────────────────────────────────
 
     def _bulk_targets(self) -> list[Path]:
@@ -381,7 +484,8 @@ class GitUIApp(App):
             else:
                 ok, err = repo.checkout(result)
             if ok:
-                self.notify(f"Switched to {result.lstrip('__new__')}", title="Branch")
+                branch_name = result[7:] if result.startswith("__new__") else result
+                self.notify(f"Switched to {branch_name}", title="Branch")
             else:
                 self.notify(err, title="Branch error", severity="error")
             self._refresh_current_repo()
@@ -483,10 +587,21 @@ class GitUIApp(App):
         if not self._current_repo:
             self.notify("No repo selected", severity="warning"); return
         path = self._current_repo.path
-        if self.config.remove_repo(path):
-            self._current_repo = None
-            self.query_one("#file-list", FileList).clear()
-            self.query_one("#diff-view", DiffView).clear()
-            self.query_one("#graph-view", GraphView).clear()
-            self.refresh_all()
-            self.notify(f"Removed {path.name}", title="Repo removed")
+
+        def _on_confirm(confirmed: bool) -> None:
+            if not confirmed:
+                return
+            if self.config.remove_repo(path):
+                self._current_repo = None
+                self.query_one("#file-list", FileList).clear()
+                self.query_one("#diff-view", DiffView).clear()
+                self.query_one("#graph-view", GraphView).clear()
+                self.refresh_all()
+                self.notify(f"Removed {path.name}", title="Repo removed")
+
+        self.push_screen(ConfirmModal(
+            "Remove repository",
+            f"Remove [cyan]{path.name}[/cyan] from the tracked list?\n(The directory itself is not deleted)",
+            confirm_label="Remove",
+            danger=False,
+        ), callback=_on_confirm)

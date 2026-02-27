@@ -53,6 +53,8 @@ class GraphView(Widget):
     GraphView #commit-table { height: 1fr; }
     """
 
+    _commits: dict[str, CommitInfo] = {}
+
     def compose(self) -> ComposeResult:
         with TabbedContent(id="graph-tabs"):
             with TabPane("Graph", id="tab-graph"):
@@ -66,6 +68,8 @@ class GraphView(Widget):
     # ── Public API ────────────────────────────────────────────────────────────
 
     def show_graph(self, graph_text: str, commits: list[CommitInfo]):
+        self._commits = {c.sha: c for c in commits}
+
         # Graph tab
         log = self.query_one("#graph-log", RichLog)
         log.clear()
@@ -90,6 +94,7 @@ class GraphView(Widget):
             )
 
     def clear(self):
+        self._commits = {}
         self.query_one("#graph-log", RichLog).clear()
         self.query_one("#commit-table", DataTable).clear()
 

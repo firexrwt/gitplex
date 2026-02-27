@@ -128,6 +128,13 @@ class FileList(Widget):
                     return items[idx], is_staged
         return None, is_staged
 
+    def get_discard_candidate(self) -> "FileStatus | None":
+        """Return the highlighted unstaged file if one is selected, else None."""
+        item, is_staged = self._selected_item()
+        if item and not is_staged:
+            return item.fs
+        return None
+
     # ── Actions ───────────────────────────────────────────────────────────────
 
     def action_toggle_stage(self):

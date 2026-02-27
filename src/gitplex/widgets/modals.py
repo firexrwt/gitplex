@@ -1,7 +1,7 @@
 """Modal screens: commit, add-repo, new-repo, branch checkout, bulk-op progress."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -9,6 +9,8 @@ from textual.screen import ModalScreen
 from textual.widgets import Label, Input, Button, DataTable, RichLog, Checkbox
 from textual.containers import Vertical, Horizontal, ScrollableContainer
 from textual import on
+
+from ..git.repo import CommitInfo
 
 
 @dataclass
@@ -488,6 +490,53 @@ class RemoteModal(ModalScreen[RemoteResult | None]):
             self.dismiss(RemoteResult("remove", name))
 
 
+# ── Confirm modal ─────────────────────────────────────────────────────────────
+
+class ConfirmModal(ModalScreen[bool]):
+    """Generic yes/no confirmation dialog."""
+
+    DEFAULT_CSS = """
+    ConfirmModal > Vertical {
+        width: 62;
+        height: auto;
+        border: round $warning;
+        background: $surface;
+        padding: 1 2;
+    }
+    ConfirmModal #confirm-msg  { margin-top: 1; margin-bottom: 1; }
+    ConfirmModal Horizontal    { height: auto; align: right middle; margin-top: 1; }
+    ConfirmModal Button        { margin-left: 1; }
+    """
+
+    BINDINGS = [Binding("escape", "cancel", "Cancel")]
+
+    def __init__(self, title: str, message: str,
+                 confirm_label: str = "Confirm", danger: bool = False) -> None:
+        super().__init__()
+        self._title = title
+        self._message = message
+        self._confirm_label = confirm_label
+        self._danger = danger
+
+    def compose(self) -> ComposeResult:
+        variant = "error" if self._danger else "warning"
+        with Vertical():
+            yield Label(f"[bold]{self._title}[/bold]", markup=True)
+            yield Label(self._message, id="confirm-msg", markup=True)
+            with Horizontal():
+                yield Button("Cancel",            variant="default", id="btn-cancel")
+                yield Button(self._confirm_label, variant=variant,   id="btn-confirm")
+
+    def action_cancel(self) -> None:
+        self.dismiss(False)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-cancel":
+            self.dismiss(False)
+        elif event.button.id == "btn-confirm":
+            self.dismiss(True)
+
+
 # ── Branch checkout modal ─────────────────────────────────────────────────────
 
 class BranchModal(ModalScreen[str | None]):
@@ -540,8 +589,110 @@ class BranchModal(ModalScreen[str | None]):
         elif event.button.id == "btn-checkout":
             tbl = self.query_one("#branch-list", DataTable)
             if tbl.cursor_row is not None:
-                key = tbl.get_row_at(tbl.cursor_row)[0].plain.strip().lstrip("● ")
+                cell = tbl.get_row_at(tbl.cursor_row)[0]
+                text = cell.plain if hasattr(cell, "plain") else cell
+                key = text.strip().removeprefix("● ").strip()
                 self.dismiss(key)
         elif event.button.id == "btn-new":
             name = self.query_one("#new-branch-input", Input).value.strip()
             self.dismiss(f"__new__{name}" if name else None)
+
+
+# ── Commit actions modal ───────────────────────────────────────────────────────
+
+@dataclass
+class CommitActionResult:
+    action: str   # cherry-pick | revert | reset-soft | reset-mixed | reset-hard | amend
+    sha: str
+    message: str = ""  # only for amend
+
+
+class CommitActionsModal(ModalScreen["CommitActionResult | None"]):
+    """Actions available for a selected commit: cherry-pick, revert, reset, amend."""
+
+    DEFAULT_CSS = """
+    CommitActionsModal > Vertical {
+        width: 72;
+        height: auto;
+        max-height: 34;
+        border: round $accent;
+        background: $surface;
+        padding: 1 2;
+    }
+    CommitActionsModal #commit-meta  { color: $text-muted; margin-bottom: 0; }
+    CommitActionsModal #commit-subj  { margin-bottom: 1; }
+    CommitActionsModal .section-lbl  { color: $text-muted; margin-top: 1; height: 1; }
+    CommitActionsModal Horizontal    { height: auto; margin-top: 1; }
+    CommitActionsModal Button        { margin-right: 1; }
+    CommitActionsModal #amend-box    { display: none; }
+    CommitActionsModal #amend-box.show { display: block; }
+    CommitActionsModal #amend-input  { margin-top: 1; margin-bottom: 1; }
+    CommitActionsModal #footer       { align: right middle; margin-top: 1; }
+    """
+
+    BINDINGS = [Binding("escape", "cancel", "Cancel")]
+
+    def __init__(self, commit: CommitInfo, is_head: bool) -> None:
+        super().__init__()
+        self._commit = commit
+        self._is_head = is_head
+
+    def compose(self) -> ComposeResult:
+        with Vertical():
+            yield Label("[bold]Commit actions[/bold]", markup=True)
+            yield Label(
+                f"[cyan]{self._commit.short_sha}[/cyan]"
+                f"  ·  {self._commit.author}"
+                f"  ·  {self._commit.date}",
+                markup=True, id="commit-meta",
+            )
+            yield Label(self._commit.subject, id="commit-subj")
+
+            yield Label("Apply to current branch:", classes="section-lbl")
+            with Horizontal():
+                yield Button("Cherry-pick", variant="primary", id="btn-cherry-pick")
+                yield Button("Revert",      variant="default", id="btn-revert")
+
+            yield Label("Reset HEAD to this commit:", classes="section-lbl")
+            with Horizontal():
+                yield Button("Soft",   variant="success", id="btn-reset-soft",
+                             tooltip="Keep changes staged")
+                yield Button("Mixed",  variant="warning", id="btn-reset-mixed",
+                             tooltip="Keep changes unstaged")
+                yield Button("Hard ⚠", variant="error",   id="btn-reset-hard",
+                             tooltip="Discard all changes — irreversible")
+
+            with Vertical(id="amend-box"):
+                yield Label("Amend last commit message:", classes="section-lbl")
+                yield Input(self._commit.subject, id="amend-input")
+                with Horizontal():
+                    yield Button("Amend", variant="primary", id="btn-amend")
+
+            with Horizontal(id="footer"):
+                yield Button("Cancel", variant="default", id="btn-cancel")
+
+    def on_mount(self) -> None:
+        if self._is_head:
+            self.query_one("#amend-box").add_class("show")
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        bid = event.button.id
+        if bid == "btn-cancel":
+            self.dismiss(None)
+        elif bid == "btn-cherry-pick":
+            self.dismiss(CommitActionResult("cherry-pick", self._commit.sha))
+        elif bid == "btn-revert":
+            self.dismiss(CommitActionResult("revert", self._commit.sha))
+        elif bid == "btn-reset-soft":
+            self.dismiss(CommitActionResult("reset-soft", self._commit.sha))
+        elif bid == "btn-reset-mixed":
+            self.dismiss(CommitActionResult("reset-mixed", self._commit.sha))
+        elif bid == "btn-reset-hard":
+            self.dismiss(CommitActionResult("reset-hard", self._commit.sha))
+        elif bid == "btn-amend":
+            msg = self.query_one("#amend-input", Input).value.strip()
+            if msg:
+                self.dismiss(CommitActionResult("amend", self._commit.sha, msg))
