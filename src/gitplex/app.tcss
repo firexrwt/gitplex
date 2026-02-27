@@ -1,0 +1,156 @@
+/* ═══════════════════════════════════════════════════════════════
+   GitUI — Textual stylesheet
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Root layout ────────────────────────────────────────────────── */
+Screen {
+    background: $background;
+}
+
+#main {
+    height: 1fr;
+    width: 1fr;
+}
+
+/* ── Left column ─────────────────────────────────────────────────── */
+#left-col {
+    width: 32;
+    min-width: 24;
+    border-right: solid $primary-darken-3;
+}
+
+#repo-list {
+    height: 45%;
+    min-height: 6;
+    border-bottom: solid $primary-darken-3;
+}
+
+#file-list {
+    height: 55%;
+    min-height: 6;
+}
+
+/* ── Right column ────────────────────────────────────────────────── */
+#right-tabs {
+    height: 1fr;
+    width: 1fr;
+}
+
+/* ── RepoList widget ─────────────────────────────────────────────── */
+RepoList {
+    border: none;
+}
+
+RepoList > ListView {
+    background: transparent;
+    height: 1fr;
+}
+
+RepoItem {
+    height: 3;
+    padding: 0 1;
+}
+
+RepoItem:focus, RepoItem.--highlight {
+    background: $accent 20%;
+}
+
+.repo-name   { width: 1fr;  color: $text; }
+.repo-branch { width: 12;   color: $accent; }
+.badge-ahead  { width: 4;   color: $success; }
+.badge-behind { width: 4;   color: $warning; }
+.badge-dirty  { width: 2;   color: $error; }
+
+/* ── FileList widget ─────────────────────────────────────────────── */
+FileList {
+    border: none;
+}
+
+FileItem {
+    height: 1;
+    padding: 0 1;
+}
+
+FileItem:focus, FileItem.--highlight {
+    background: $accent 20%;
+}
+
+.file-status { width: 3; }
+.file-path   { width: 1fr; color: $text-muted; }
+
+/* ── DiffView ────────────────────────────────────────────────────── */
+DiffView {
+    border: none;
+    height: 1fr;
+}
+
+#diff-hint {
+    height: 1;
+    background: $surface;
+    color: $text-disabled;
+    padding: 0 1;
+    text-style: dim;
+}
+
+#diff-log {
+    height: 1fr;
+    scrollbar-color: $primary-darken-2;
+}
+
+#hunk-list {
+    height: 8;
+    border-bottom: solid $primary-darken-3;
+}
+
+#hunk-body {
+    height: 1fr;
+}
+
+/* ── GraphView ───────────────────────────────────────────────────── */
+GraphView {
+    border: none;
+    height: 1fr;
+}
+
+#graph-log {
+    scrollbar-color: $primary-darken-2;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────────── */
+TabbedContent > TabBar {
+    background: $surface;
+}
+
+/* ── Modal base ──────────────────────────────────────────────────── */
+ModalScreen {
+    align: center middle;
+    background: $background 70%;
+}
+
+/* ── BulkProgressModal ───────────────────────────────────────────── */
+#bulk-log {
+    height: 1fr;
+    border: round $primary;
+    scrollbar-color: $primary-darken-2;
+}
+
+/* ── Scrollbars ──────────────────────────────────────────────────── */
+ScrollBar {
+    background: $surface;
+    color: $primary-darken-1;
+}
+
+/* ── DataTable ───────────────────────────────────────────────────── */
+DataTable {
+    height: 1fr;
+}
+
+DataTable > .datatable--header {
+    background: $surface;
+    color: $text;
+    text-style: bold;
+}
+
+DataTable > .datatable--cursor {
+    background: $accent 30%;
+}
