@@ -48,7 +48,7 @@ repositories simultaneously.
 Clone or download the repository, then run the installer:
 
 ```
-git clone <repo-url> gitplex
+git clone https://github.com/firexrwt/gitplex.git
 cd gitplex
 bash install.sh
 ```
