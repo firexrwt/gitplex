@@ -19,8 +19,13 @@ repositories simultaneously.
   pull, push or fetch all of them concurrently with a single keypress.
 - **Commit graph** — visual `git log --graph` output with colour-coded
   branches, plus a structured commit table with author, date and refs.
+- **Commit history actions** — select any commit in the Log table and
+  cherry-pick, revert, reset (soft / mixed / hard) or amend it directly
+  from the TUI. Destructive operations require an explicit confirmation.
 - **Commit dialog** — write and apply commit messages without leaving the TUI.
 - **Branch management** — list branches, switch between them, create new ones.
+- **Force push** — push with `--force-with-lease` after a rebase or reset;
+  fails safely if the remote was updated by someone else in the meantime.
 - **Stash** — stash dirty changes on the current repository instantly.
 - **Create repositories** — run `git init` on a new empty directory or on an
   existing folder full of files, with an optional automatic initial commit.
@@ -151,6 +156,7 @@ These act on the repository currently selected in the repo list.
 | `c`  | Open the commit dialog (requires at least one staged file)  |
 | `p`  | Pull (current repo)                                         |
 | `P`  | Push (current repo)                                         |
+| `F`  | Force push with `--force-with-lease` (requires confirmation)|
 | `f`  | Fetch --all --prune (current repo)                          |
 | `b`  | Open the branch dialog (switch or create branch)            |
 | `S`  | Stash all dirty changes on the current repo                 |
@@ -181,6 +187,25 @@ active. Press `Space` on a file to toggle its staged state.
 | `A`    | Stage all unstaged files at once              |
 | `U`    | Unstage all staged files at once              |
 | `d`    | Discard unstaged changes in the highlighted file |
+
+### Commit log
+
+The Log tab inside the Graph panel shows a structured commit table.
+
+| Key     | Action                                                       |
+|---------|--------------------------------------------------------------|
+| `Enter` | Open the commit actions dialog for the highlighted commit    |
+
+**Commit actions** available per commit:
+
+| Action       | Description                                                        |
+|--------------|--------------------------------------------------------------------|
+| Cherry-pick  | Apply this commit on top of the current branch                     |
+| Revert       | Create a new commit that undoes the changes                        |
+| Reset soft   | Move HEAD here; keep changes staged                                |
+| Reset mixed  | Move HEAD here; keep changes unstaged                              |
+| Reset hard   | Move HEAD here and discard all changes (requires confirmation)     |
+| Amend        | Edit the commit message (available only for the HEAD commit)       |
 
 ### Diff view
 
