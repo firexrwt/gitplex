@@ -97,6 +97,14 @@ class GitUIApp(App):
         if self._scan_dir:
             self._auto_scan(self._scan_dir)
         self.refresh_all()
+        # Auto-refresh local status every 5 seconds
+        self.set_interval(5, self._auto_refresh)
+
+    def _auto_refresh(self):
+        """Silently refresh all repo statuses and the current repo's files."""
+        self.refresh_all()
+        if self._current_repo:
+            self._refresh_current_repo()
 
     def _auto_scan(self, root: Path):
         """Add all immediate child directories that are git repos."""
