@@ -99,8 +99,39 @@ class GitUIApp(App):
         if self._scan_dir:
             self._auto_scan(self._scan_dir)
         self.refresh_all()
+        self._check_for_updates()
         # Auto-refresh local status every 5 seconds
         self.set_interval(5, self._auto_refresh)
+
+    @work(thread=True)
+    def _check_for_updates(self):
+        """Once per day: fetch origin on the source repo and notify if behind."""
+        import time, subprocess as sp
+        _DAY = 86_400
+        if time.time() - self.config.last_update_check < _DAY:
+            return
+        source_dir = self.config.source_dir
+        if not source_dir or not GitRepo.is_git_repo(source_dir):
+            return
+        try:
+            sp.run(
+                ["git", "-C", str(source_dir), "fetch", "--quiet", "origin"],
+                capture_output=True, timeout=10,
+            )
+            r = sp.run(
+                ["git", "-C", str(source_dir), "rev-list", "--count", "HEAD..@{upstream}"],
+                capture_output=True, text=True, timeout=5,
+            )
+            count = int(r.stdout.strip()) if r.returncode == 0 and r.stdout.strip() else 0
+        except Exception:
+            return
+        self.config.set_last_update_check(time.time())
+        self.config.set_pending_updates(count)
+        if count > 0:
+            msg = f"{count} new commit{'s' if count != 1 else ''} — run `gitplex update`"
+            self.call_from_thread(
+                self.notify, msg, title="GitPlex update available", timeout=5,
+            )
 
     def _auto_refresh(self):
         """Silently refresh all repo statuses and the current repo's files."""

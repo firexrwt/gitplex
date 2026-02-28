@@ -13,6 +13,12 @@ die()   { printf '\033[31m%s\033[0m\n' "Error: $*"; exit 1; }
 [[ -d "$VENV" ]] || die "GitPlex is not installed. Run install.sh first."
 
 cyan "Updating GitPlex from $SCRIPT_DIR …"
+
+if git -C "$SCRIPT_DIR" rev-parse --git-dir > /dev/null 2>&1; then
+    cyan "Pulling latest changes…"
+    git -C "$SCRIPT_DIR" pull --ff-only || die "git pull failed — resolve conflicts manually."
+fi
+
 "$VENV/bin/pip" install --quiet --force-reinstall "$SCRIPT_DIR"
 
 VERSION=$("$VENV/bin/python" -m gitplex.main --version 2>/dev/null || echo "unknown")

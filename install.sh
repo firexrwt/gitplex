@@ -106,6 +106,11 @@ fi
 # Make available in the current shell session too
 export PATH="$BIN_DIR:$PATH"
 
+# ── Save source dir for auto-update checks ────────────────────────────────────
+mkdir -p "$HOME/.config/gitplex"
+echo "$SCRIPT_DIR" > "$HOME/.config/gitplex/source_dir"
+ok "Source directory recorded for update checks."
+
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
 green "══════════════════════════════════════════════"
