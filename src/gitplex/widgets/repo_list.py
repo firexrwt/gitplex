@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from textual.app import ComposeResult
+from textual.events import Click
 from textual.message import Message
-from textual.reactive import reactive
 from textual.widget import Widget
-from textual.widgets import ListView, ListItem, Label, Checkbox
-from textual.containers import Horizontal
+from textual.widgets import ListView, ListItem, Label
+from textual.containers import Horizontal, Vertical
 from textual import on
 
 from ..git.repo import GitRepo, RepoStatus
@@ -18,15 +18,16 @@ class RepoItem(ListItem):
 
     DEFAULT_CSS = """
     RepoItem {
-        height: 3;
+        height: 2;
         padding: 0 1;
     }
-    RepoItem > Horizontal {
-        height: 3;
-        align: left middle;
-    }
-    RepoItem .repo-name { width: 1fr; }
-    RepoItem .repo-branch { color: $accent; width: 16; }
+    RepoItem > Vertical   { height: 2; }
+    RepoItem .row-name    { height: 1; }
+    RepoItem .row-info    { height: 1; }
+    RepoItem .chk-label   { width: 3; }
+    RepoItem .repo-name   { width: 1fr; }
+    RepoItem .chk-spacer  { width: 3; }
+    RepoItem .repo-branch { color: $accent; width: 1fr; }
     RepoItem .badge-ahead  { color: $success; width: 4; }
     RepoItem .badge-behind { color: $warning; width: 4; }
     RepoItem .badge-dirty  { color: $error;   width: 3; }
@@ -39,33 +40,45 @@ class RepoItem(ListItem):
 
     def compose(self) -> ComposeResult:
         s = self.repo_status
-        ahead  = f" ↑{s.ahead}"  if s.ahead  else "    "
-        behind = f" ↓{s.behind}" if s.behind else "    "
-        dirty  = " ●" if s.is_dirty else "  "
+        ahead  = f"↑{s.ahead}"  if s.ahead  else ""
+        behind = f"↓{s.behind}" if s.behind else ""
+        dirty  = "●" if s.is_dirty else ""
+        chk = "☑" if self._checked else "☐"
 
-        with Horizontal():
-            yield Checkbox(value=self._checked, id=f"chk-{id(self)}")
-            yield Label(s.name[:22], classes="repo-name")
-            yield Label(s.branch[:14], classes="repo-branch")
-            yield Label(ahead,  classes="badge-ahead")
-            yield Label(behind, classes="badge-behind")
-            yield Label(dirty,  classes="badge-dirty")
+        with Vertical():
+            with Horizontal(classes="row-name"):
+                yield Label(chk, classes="chk-label")
+                yield Label(s.name, classes="repo-name")
+            with Horizontal(classes="row-info"):
+                yield Label("   ", classes="chk-spacer")
+                yield Label(s.branch, classes="repo-branch")
+                yield Label(ahead,  classes="badge-ahead")
+                yield Label(behind, classes="badge-behind")
+                yield Label(dirty,  classes="badge-dirty")
+
+    def on_click(self, event: Click) -> None:
+        # Toggle only when clicking the checkbox label itself
+        if event.widget is not None and getattr(event.widget, "has_class", None):
+            if event.widget.has_class("chk-label"):
+                self._checked = not self._checked
+                event.widget.update("☑" if self._checked else "☐")
+                event.stop()
 
     def refresh_status(self, status: RepoStatus):
         self.repo_status = status
         s = status
-        self.query_one(".repo-name", Label).update(s.name[:22])
-        self.query_one(".repo-branch", Label).update(s.branch[:14])
-        self.query_one(".badge-ahead",  Label).update(f" ↑{s.ahead}"  if s.ahead  else "    ")
-        self.query_one(".badge-behind", Label).update(f" ↓{s.behind}" if s.behind else "    ")
-        self.query_one(".badge-dirty",  Label).update(" ●" if s.is_dirty else "  ")
+        ahead  = f"↑{s.ahead}"  if s.ahead  else ""
+        behind = f"↓{s.behind}" if s.behind else ""
+        dirty  = "●" if s.is_dirty else ""
+        self.query_one(".repo-name",   Label).update(s.name)
+        self.query_one(".repo-branch", Label).update(s.branch)
+        self.query_one(".badge-ahead",  Label).update(ahead)
+        self.query_one(".badge-behind", Label).update(behind)
+        self.query_one(".badge-dirty",  Label).update(dirty)
 
     @property
     def is_checked(self) -> bool:
-        try:
-            return self.query_one(Checkbox).value
-        except Exception:
-            return False
+        return self._checked
 
 
 class RepoList(Widget):
@@ -127,8 +140,9 @@ class RepoList(Widget):
 
     def select_all(self, checked: bool = True):
         for item in self.query(RepoItem):
+            item._checked = checked
             try:
-                item.query_one(Checkbox).value = checked
+                item.query_one(".chk-label", Label).update("☑" if checked else "☐")
             except Exception:
                 pass
 
