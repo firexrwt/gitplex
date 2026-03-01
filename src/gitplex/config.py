@@ -7,13 +7,11 @@ from pathlib import Path
 
 _CONFIG_DIR  = Path.home() / ".config" / "gitplex"
 _CONFIG_FILE = _CONFIG_DIR / "config.json"
-_SOURCE_DIR_FILE = _CONFIG_DIR / "source_dir"
 
 _DEFAULTS = {
     "repos": [],
     "auto_fetch_interval": 0,   # seconds, 0 = disabled
     "max_log_entries": 80,
-    "last_update_check": 0.0,   # unix timestamp
 }
 
 
@@ -75,25 +73,3 @@ class Config:
     def auto_fetch_interval(self) -> int:
         return self._data.get("auto_fetch_interval", 0)
 
-    @property
-    def source_dir(self) -> Path | None:
-        if _SOURCE_DIR_FILE.exists():
-            p = Path(_SOURCE_DIR_FILE.read_text().strip())
-            return p if p.exists() else None
-        return None
-
-    @property
-    def last_update_check(self) -> float:
-        return float(self._data.get("last_update_check", 0.0))
-
-    def set_last_update_check(self, ts: float) -> None:
-        self._data["last_update_check"] = ts
-        self._save()
-
-    @property
-    def pending_updates(self) -> int:
-        return int(self._data.get("pending_updates", 0))
-
-    def set_pending_updates(self, count: int) -> None:
-        self._data["pending_updates"] = count
-        self._save()

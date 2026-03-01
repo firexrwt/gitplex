@@ -2,11 +2,36 @@
 name = "gitplex"
 version = "0.2.0"
 description = "Multi-repo git TUI on steroids"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Stepan Eremeev", email = "opensource@firexrwt.com" },
+]
+keywords = ["git", "tui", "terminal", "textual", "cli", "multi-repo"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Version Control :: Git",
+    "Topic :: Terminals",
+]
 requires-python = ">=3.11"
 dependencies = [
     "textual>=0.47.0",
     "gitpython>=3.1.40",
 ]
+
+[project.urls]
+Homepage = "https://github.com/firexrwt/gitplex"
+Repository = "https://github.com/firexrwt/gitplex"
+"Bug Tracker" = "https://github.com/firexrwt/gitplex/issues"
 
 [project.scripts]
 gitplex = "gitplex.main:main"

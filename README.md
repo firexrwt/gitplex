@@ -50,37 +50,26 @@ repositories simultaneously.
 
 ## Installation
 
-Clone or download the repository, then run the installer:
+### pip
+
+```
+pip install gitplex
+```
+
+### Fedora / COPR
+
+```
+dnf copr enable firexrwt/gitplex
+dnf install gitplex
+```
+
+### From source
 
 ```
 git clone https://github.com/firexrwt/gitplex.git
 cd gitplex
-bash install.sh
+pip install .
 ```
-
-The installer will:
-
-1. Locate Python 3.11+ on your system.
-2. Create an isolated virtual environment at `~/.local/share/gitplex/venv`.
-3. Install the package and its dependencies into that environment.
-4. Write a wrapper script at `~/.local/bin/gitplex`.
-5. Add `~/.local/bin` to `PATH` in every shell RC file found
-   (`.bashrc`, `.zshrc`, `.bash_profile`, `.profile`).
-
-Reload your shell after installation:
-
-```
-source ~/.bashrc
-```
-
-To uninstall:
-
-```
-bash uninstall.sh
-```
-
-This removes the venv, the wrapper script and the PATH lines added to your
-RC files.
 
 ---
 
