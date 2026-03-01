@@ -45,6 +45,7 @@ repositories simultaneously.
 
 - Python 3.11 or newer
 - git (any reasonably recent version)
+- Linux or macOS — Windows is not currently supported, but support may be added in the future
 
 ---
 

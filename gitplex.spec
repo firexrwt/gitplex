@@ -48,5 +48,5 @@ Key features:
 %{_bindir}/gitplex
 
 %changelog
-* Sat Mar 01 2026 Stepan Eremeev <opensource@firexrwt.com> - 0.2.0-1
+* Sun Mar 01 2026 Stepan Eremeev <opensource@firexrwt.com> - 0.2.0-1
 - Initial package
