@@ -13,7 +13,6 @@ BuildRequires:  pyproject-rpm-macros
 
 Requires:       git
 Requires:       python3-textual >= 0.47.0
-Requires:       python3-gitpython >= 3.1.40
 
 %description
 GitPlex is a terminal-based Git client built with Python and Textual.
