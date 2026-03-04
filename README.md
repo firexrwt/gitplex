@@ -77,16 +77,22 @@ pip install .
 ## Usage
 
 ```
-gitplex                 open the TUI, load repos saved in config
-gitplex .               scan the current directory for git repos
-gitplex ~/projects      scan any directory for git repos
-gitplex --help          print usage and key binding reference
-gitplex --version       print the version number
+gitplex                         open the TUI, load repos saved in config
+gitplex .                       scan the current directory for git repos
+gitplex ~/projects              scan any directory for git repos
+gitplex <url>                   clone a repo, add it to config, and open the TUI
+gitplex <url> --dest <path>     clone to a specific directory
+gitplex --help                  print usage and key binding reference
+gitplex --version               print the version number
 ```
 
 When a directory is passed, GitPlex scans its immediate children for `.git`
 directories and adds every repository it finds to the config automatically.
 Repositories that are already tracked are not duplicated.
+
+When a URL is passed, GitPlex clones the repository into a subdirectory of the
+current working directory (named after the repository), adds it to the config,
+and opens the TUI. Use `--dest` to specify a different destination path.
 
 ---
 

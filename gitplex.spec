@@ -1,6 +1,6 @@
 Name:           gitplex
-Version:        0.2.0
-Release:        2%{?dist}
+Version:        0.3.0
+Release:        1%{?dist}
 Summary:        Multi-repo git TUI on steroids
 
 License:        MIT
@@ -47,6 +47,9 @@ Key features:
 %{_bindir}/gitplex
 
 %changelog
+* Tue Mar 03 2026 Stepan Eremeev <opensource@firexrwt.com> - 0.3.0-1
+- Add CLI clone: gitplex <url> [--dest <path>]
+
 * Mon Mar 02 2026 Stepan Eremeev <opensource@firexrwt.com> - 0.2.0-2
 - Remove unused GitPython dependency (fixes install on Fedora 43)
 

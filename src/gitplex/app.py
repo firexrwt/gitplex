@@ -26,7 +26,7 @@ from .widgets.modals import (
 
 class GitUIApp(App):
     CSS_PATH = "app.tcss"
-    TITLE = "GitUI"
+    TITLE = "gitplex"
     SUB_TITLE = "multi-repo git TUI"
 
     BINDINGS = [

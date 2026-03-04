@@ -2,6 +2,7 @@
   gitplex              # load repos from config
   gitplex .            # scan current dir for git repos
   gitplex /path/to/dir # scan that dir for git repos
+  gitplex <url>        # clone repo and add to config
 """
 from __future__ import annotations
 
@@ -16,6 +17,8 @@ Usage:
   gitplex               open with repos saved in config
   gitplex .             scan current directory for git repos
   gitplex <path>        scan <path> for git repos
+  gitplex <url>         clone repo, add to config, and open
+  gitplex <url> --dest <path>  clone to a specific directory
   gitplex -h|--help     show this help
   gitplex -v|--version  show version
 
@@ -32,6 +35,52 @@ Key bindings (inside the app):
   Enter   commit actions (in Log tab)
 """
 
+_URL_PREFIXES = ("https://", "http://", "git@", "git://", "ssh://")
+
+
+def _is_url(s: str) -> bool:
+    return s.startswith(_URL_PREFIXES)
+
+
+def _repo_name_from_url(url: str) -> str:
+    name = url.rstrip("/").split("/")[-1]
+    if name.endswith(".git"):
+        name = name[:-4]
+    return name or "repo"
+
+
+def _cmd_clone(args: list[str]) -> None:
+    from .git.repo import GitRepo
+    from .config import Config
+
+    url = args[0]
+    dest: Path | None = None
+
+    if "--dest" in args:
+        idx = args.index("--dest")
+        if idx + 1 >= len(args):
+            print("Error: --dest requires a path argument", file=sys.stderr)
+            sys.exit(1)
+        dest = Path(args[idx + 1]).expanduser().resolve()
+    else:
+        dest = Path.cwd() / _repo_name_from_url(url)
+
+    print(f"Cloning {url} → {dest} ...")
+    try:
+        repo, msg = GitRepo.clone(url, dest)
+    except RuntimeError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if msg:
+        print(msg)
+
+    Config().add_repo(repo.path)
+
+    from .app import GitUIApp
+    GitUIApp().run()
+
+
 def main():
     from .app import GitUIApp
 
@@ -46,7 +95,11 @@ def main():
         try:
             print(f"gitplex {_v('gitplex')}")
         except Exception:
-            print("gitplex 0.2.0")
+            print("gitplex 0.3.0")
+        return
+
+    if args and _is_url(args[0]):
+        _cmd_clone(args)
         return
 
     scan_dir: Path | None = None
