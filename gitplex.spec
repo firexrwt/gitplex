@@ -6,6 +6,7 @@ Summary:        Multi-repo git TUI on steroids
 License:        MIT
 URL:            https://github.com/firexrwt/gitplex
 Source0:        %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
+Source1:        %{name}.rpmlintrc
 
 BuildArch:      noarch
 BuildRequires:  python3-devel

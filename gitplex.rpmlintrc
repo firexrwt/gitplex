@@ -1,0 +1,2 @@
+# False positives: 'repo' and 'repos' are standard git terminology
+addFilter(r"spelling-error.*\brepo")
